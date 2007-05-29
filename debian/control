@@ -1,0 +1,14 @@
+Source: sp-error-visualizer
+Section: devel
+Priority: optional
+Maintainer: Eero Tamminen <eero.tamminen@nokia.com>
+Build-Depends: debhelper (>= 4.0.0), libosso-dev
+Standards-Version: 3.6.1
+
+Package: sp-error-visualizer
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Displays errors (or anything from stdin) as banners.
+ This small tool displays any messages from stdin graphically
+ (currently as banners). It's mainly intended to display errors from
+ syslog to make them more visible to developers.

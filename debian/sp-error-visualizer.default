@@ -1,0 +1,4 @@
+# sourced by /etc/init.d/sp-error-visualizer
+# installed at /etc/default/sp-error-visualizer by the maintainer scripts
+
+VISUALIZER_OPTS="-f /usr/share/sp-error-visualizer/data/syslog-common-errors.conf"

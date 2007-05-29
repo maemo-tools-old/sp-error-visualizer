@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# A simple startup / stop initscript for the sp-error-visualizer tool 
+# with the default syslog matching rule configuration
+#
+# This file is part of sp-error-visualizer
+#
+# Copyright (C) 2007 Nokia Corporation.
+#
+# Contact: Eero Tamminen <eero.tamminen@nokia.com>
+
+if test -f /etc/default/sp-error-visualizer; then
+	    . /etc/default/sp-error-visualizer
+else
+	echo "No default configuration for error visualizer."
+	echo "All syslog events will be displayed."
+fi
+
+case "$1" in
+  start)
+  	if [ -e /var/run/sp-error-visualizer.pid ]; then
+		echo "sp-error-visualizer already running."
+	else
+        	echo "Setting up the graphical display of errors"
+		tail -f /var/ftd-log/syslog | sp-error-visualizer $VISUALIZER_OPTS &
+		sleep 2
+		# Hmm. Do we actually _need_ to store this, or would the
+		# pidof work sufficiently well elsewhere too?
+		pidof sp-error-visualizer > /var/run/sp-error-visualizer.pid
+	fi
+        ;;
+  stop)
+        echo "Shutting down the graphical display of errors"
+        if [ -e /var/run/sp-error-visualizer.pid ]; then
+	    kill $(cat /var/run/sp-error-visualizer.pid)
+	    rm /var/run/sp-error-visualizer.pid
+        else
+	    echo "The sp-error-visualizer was not running."
+        fi
+        ;;
+  restart)
+	echo "Restarting the sp-error-visualizer"
+	/etc/init.d/sp-error-visualizer stop
+	/etc/init.d/sp-error-visualizer start
+	;;
+  *)
+        N=/etc/init.d/sp-error-visualizer
+        echo "Usage: $N {start|stop|restart)" >&2
+        exit 1
+        ;;
+esac

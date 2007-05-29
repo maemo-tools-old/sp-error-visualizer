@@ -1,0 +1,69 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH SP-ERROR-VISUALIZER 1 "May 24, 2007"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+sp-error-visualizer \- tool to display errors as banners
+.SH SYNOPSIS
+.B sp-error-visualizer
+.RI [ -f 
+.IR FILE
+|
+.IR PATTERNS]
+.br
+.SH DESCRIPTION
+The 
+.B sp-error-visualizer 
+provides a way of displaying text content (optionally filtered against a set of patterns) as banners. The primary purpose of this tool is to provide a way to display various error messages from syslog in a more easily visible manner to the developers and testers.
+.PP
+All data to be potentially displayed is received via the standard input. By default everything will be displayed. Invividual messages are terminated by linefeeds in addition to the usual NULL terrmination. Additionally, messages longer than 256 bytes will be truncated to that limit.
+.PP
+Currently, a maximum of 256 matching patterns are supported. The patterns can be provided either from a file (see
+.B -f
+option below) or as a series of arguments. When reading from file, some preprocessing will be done:
+
+.IP 
+\(bu Patterns lines starting with '#' are interprepted as comments and ignored.
+.sp 1
+\(bu Empty lines will be ignored.
+.sp 1
+\(bu Whitespace is preserved in the patterns and will also be used in matching. 
+.PP
+This package includes an initscript for a convenient way to start and stop the displaying of errors and other interesting messages from syslog with a preconfigured set of matching rules.
+.B ***INSERT THE PATH/INVOCATION INFO HERE *** 
+.PP
+.\" TeX users may be more comfortable with the \fB<whatever>\fP and
+.\" \fI<whatever>\fP escape sequences to invode bold face and italics, 
+.\" respectively.
+.SH OPTIONS
+A summary of options is included below.
+For a complete description, see the source code.
+.TP
+.B \-f
+.IR FILE
+Read the filtering patterns from a file.
+.br
+.SH FILES
+.B /var/run/sp-error-visualizer.pid
+.RS 
+When started via the provided initscript, contains the PID of syslog-displaying sp-error-visualizer instance.
+.RE
+.SH AUTHOR
+sp-error-visualizer was written by Olev Kartau <olev.kartau@nokia.com>.
+.PP
+This manual page was written by Eero Tamminen <eero.tamminen@nokia.com>.
+.SH COPYRIGHT
+Copyright (C) 2007 Nokia Corporation.
