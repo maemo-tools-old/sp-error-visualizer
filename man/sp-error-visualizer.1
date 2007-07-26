@@ -19,7 +19,7 @@
 sp-error-visualizer \- tool to display errors as banners
 .SH SYNOPSIS
 .B sp-error-visualizer
-.RI [ -f 
+.RI [ -s ] [ -f 
 .IR FILE
 |
 .IR PATTERNS]
@@ -29,7 +29,7 @@ The
 .B sp-error-visualizer 
 provides a way of displaying text content (optionally filtered against a set of patterns) as banners. The primary purpose of this tool is to provide a way to display various error messages from syslog in a more easily visible manner to the developers and testers.
 .PP
-All data to be potentially displayed is received via the standard input. By default everything will be displayed. Invividual messages are terminated by linefeeds in addition to the usual NULL terrmination. Additionally, messages longer than 256 bytes will be truncated to that limit.
+All data to be potentially displayed is received either via the standard input or via syslog socket (useful if the environment does not have a syslog daemon). By default everything will be displayed. Invividual messages are terminated by linefeeds in addition to the usual NULL terrmination. Additionally, messages longer than 256 bytes will be truncated to that limit.
 .PP
 Currently, a maximum of 256 matching patterns are supported. The patterns can be provided either from a file (see
 .B -f
@@ -43,7 +43,6 @@ option below) or as a series of arguments. When reading from file, some preproce
 \(bu Whitespace is preserved in the patterns and will also be used in matching. 
 .PP
 This package includes an initscript for a convenient way to start and stop the displaying of errors and other interesting messages from syslog with a preconfigured set of matching rules.
-.B ***INSERT THE PATH/INVOCATION INFO HERE *** 
 .PP
 .\" TeX users may be more comfortable with the \fB<whatever>\fP and
 .\" \fI<whatever>\fP escape sequences to invode bold face and italics, 
@@ -56,10 +55,13 @@ For a complete description, see the source code.
 .IR FILE
 Read the filtering patterns from a file.
 .br
+.TP
+.B \-s
+Use syslog socket instead of the syslog daemon logfile to receive messages. However, attempts to use this option will fail if the logfile can be found.
 .SH FILES
 .B /var/run/sp-error-visualizer.pid
 .RS 
-When started via the provided initscript, contains the PID of syslog-displaying sp-error-visualizer instance.
+When started via the provided initscript, this file contains the PID of syslog-displaying sp-error-visualizer instance.
 .RE
 .SH AUTHOR
 sp-error-visualizer was written by Olev Kartau <olev.kartau@nokia.com>.
@@ -67,3 +69,8 @@ sp-error-visualizer was written by Olev Kartau <olev.kartau@nokia.com>.
 This manual page was written by Eero Tamminen <eero.tamminen@nokia.com>.
 .SH COPYRIGHT
 Copyright (C) 2007 Nokia Corporation.
+.PP
+This is free software.  You may redistribute copies of it under the
+terms of the GNU General Public License v2 included with the software.
+There is NO WARRANTY, to the extent permitted by law.
+

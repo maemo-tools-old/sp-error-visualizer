@@ -22,7 +22,13 @@ case "$1" in
 		echo "sp-error-visualizer already running."
 	else
         	echo "Setting up the graphical display of errors"
+		if [ -e /var/ftd-log/syslog ]; then
+		echo "Presence of syslog file detected, piping its output"
 		tail -f /var/ftd-log/syslog | sp-error-visualizer $VISUALIZER_OPTS &
+		else
+			echo "No syslog file, using syslog socket"
+			sp-error-visualizer -s $VISUALIZER_OPTS &	
+		fi
 		sleep 2
 		# Hmm. Do we actually _need_ to store this, or would the
 		# pidof work sufficiently well elsewhere too?

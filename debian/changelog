@@ -1,3 +1,15 @@
+sp-error-visualizer (0.0.2-1) unstable; urgency=low
+
+  * Syslog socket support has been added to make this useful for
+    environments without installed syslog daemon.
+  * Licencing information/documentation fixes.
+  * Minor other changes (unified indentation, more generic argument
+    parsing etc)
+  * Fixes: NB#59835
+  * Fixes: NB#59836
+
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Thu, 26 Jul 2007 09:43:52 +0300
+
 sp-error-visualizer (0.0.1-1) unstable; urgency=low
 
   * Initial Release.
