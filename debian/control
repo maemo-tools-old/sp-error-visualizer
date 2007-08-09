@@ -10,5 +10,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Displays errors (or anything from stdin) as banners.
  This small tool displays any messages from stdin graphically
- (currently as banners). It's mainly intended to display errors from
- syslog to make them more visible to developers.
+ (currently as banners). It's mainly intended to display errors
+ from syslog to make them more visible to testers. If syslog
+ is not present, it can also read directly the socket into which
+ syslog clients write.
