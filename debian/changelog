@@ -1,3 +1,10 @@
+sp-error-visualizer (0.0.3-1) unstable; urgency=low
+
+  * Moved the sp-error-visualizer startup to occur after both desktop
+    and dbus, as it needs both in order to work properly.
+
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Fri, 10 Aug 2007 13:40:21 +0300
+
 sp-error-visualizer (0.0.2-1) unstable; urgency=low
 
   * Syslog socket support has been added to make this useful for
@@ -7,8 +14,10 @@ sp-error-visualizer (0.0.2-1) unstable; urgency=low
     parsing etc)
   * Fixes: NB#59835
   * Fixes: NB#59836
+  * Cleaned up/increased robustness of init scripts by starting to use
+    start-stop-daemon
 
- -- Eero Tamminen <eero.tamminen@nokia.com>  Thu, 26 Jul 2007 09:43:52 +0300
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Wed,  8 Aug 2007 15:52:40 +0300
 
 sp-error-visualizer (0.0.1-1) unstable; urgency=low
 
