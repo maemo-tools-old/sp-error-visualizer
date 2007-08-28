@@ -1,48 +1,71 @@
 #!/bin/sh
 #
-# A simple startup / stop initscript for the sp-error-visualizer tool 
-# with the default syslog matching rule configuration
-#
 # This file is part of sp-error-visualizer
 #
 # Copyright (C) 2007 Nokia Corporation.
 #
 # Contact: Eero Tamminen <eero.tamminen@nokia.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+# A simple start/stop initscript for the sp-error-visualizer tool 
+# with the default syslog matching rule configuration
 
 if test -f /etc/default/sp-error-visualizer; then
 	    . /etc/default/sp-error-visualizer
 else
 	echo "No default configuration for error visualizer."
-	echo "All syslog events will be displayed."
+	echo "*ALL* syslog events will be displayed!"
 fi
+
+PIDFILE="/var/run/sp-error-visualizer.pid"
+START_WITH_SYSLOG="-f /var/ftd-log/syslog | /usr/bin/sp-error-visualizer $VISUALIZER_OPTS"
+START_WITH_SOCKET="-s $VISUALIZER_OPTS"
+
+echo "Start of sp-error-visualizer initscript" > /tmp/sperv
 
 case "$1" in
   start)
-  	if [ -e /var/run/sp-error-visualizer.pid ]; then
+  	if test -f /var/run/sp-error-visualizer.pid; then
 		echo "sp-error-visualizer already running."
 	else
         	echo "Setting up the graphical display of errors"
-		if [ -e /var/ftd-log/syslog ]; then
-		echo "Presence of syslog file detected, piping its output"
-		tail -f /var/ftd-log/syslog | sp-error-visualizer $VISUALIZER_OPTS &
+		if [ -e /dev/log ]; then
+		echo "Presence of syslog daemon, piping its output"
+
+# This is still a bit messy. We should check for alternative locations.
+
+		tail -f /var/ftd-log/syslog | run-standalone.sh /usr/bin/sp-error-visualizer $VISUALIZER_OPTS &
 		else
 			echo "No syslog file, using syslog socket"
-			sp-error-visualizer -s $VISUALIZER_OPTS &	
+			sp-error-visualizer -s $VISUALIZER_OPTS &
 		fi
-		sleep 2
 		# Hmm. Do we actually _need_ to store this, or would the
 		# pidof work sufficiently well elsewhere too?
-		pidof sp-error-visualizer > /var/run/sp-error-visualizer.pid
+		pidof -s sp-error-visualizer > /var/run/sp-error-visualizer.pid
 	fi
         ;;
   stop)
         echo "Shutting down the graphical display of errors"
-        if [ -e /var/run/sp-error-visualizer.pid ]; then
-	    kill $(cat /var/run/sp-error-visualizer.pid)
-	    rm /var/run/sp-error-visualizer.pid
-        else
-	    echo "The sp-error-visualizer was not running."
-        fi
+	    if [ -e /var/run/sp-error-visualizer.pid ]; then
+		kill $(cat /var/run/sp-error-visualizer.pid)
+		rm /var/run/sp-error-visualizer.pid
+		echo "sp-error-visualizer stopped."
+	    else
+		echo "The sp-error-visualizer was not running."
+	    fi
         ;;
   restart)
 	echo "Restarting the sp-error-visualizer"
