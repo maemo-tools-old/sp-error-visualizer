@@ -93,11 +93,6 @@ GLIB ERROR
 #include <fcntl.h>
 #include <libosso.h>
 
-/* Hardcoding the syslog file location makes the tool fragile.
-   Can we acquire this information dynamically? */
-
-#define LOGFILE_NAME "/var/ftd-log/syslog"
-
 #define SYSLOG_MONITOR_DBUS_SERVICE "syslog_monitor"
 #define MAXMSG (256)
 #define MAXPATTERNS (256)
@@ -165,17 +160,17 @@ int main(int argc, char *argv[])
 	case 's':
 
 	    /* The check below might fail for other reasons than the
-	       non-existence of the file. However, in that case reading
-	       from the file via piping to stdin probably fails too */
+	       non-existence of the socket. However, in that case reading
+	       from the logfile via piping to stdin probably fails too */
 
-	    if ((access(LOGFILE_NAME, F_OK) == 0)) {
+	    if ((access(_PATH_LOG, F_OK) == 0)) {
 		g_print
 		    ("Won't read from socket as syslog appears to exist.\n");
 		g_print("See documentation for more details.\n");
 		return 1;
 	    }
 
-	    /* Ensure that any previous syslog sockets are not dangling around */
+	    /* Ensure that previous syslog sockets are not dangling around */
 
 	    unlink(_PATH_LOG);
 
@@ -188,7 +183,7 @@ int main(int argc, char *argv[])
 		     sizeof(slog_socket_addr.sa_family) +
 		     strlen(slog_socket_addr.sa_data)) == -1) {
 		g_warning("Syslog socket invocation failed!\n");
-		perror("Reason was");
+		perror("Reason was ");
 		return (1);
 	    }
 
@@ -243,7 +238,7 @@ int main(int argc, char *argv[])
 	    FD_ZERO(&fds);
 	    FD_SET(slog_socket, &fds);
 	    if (select(slog_socket + 1, &fds, NULL, NULL, NULL) < 0) {
-		g_print("Select failed. Exiting...\n");
+		g_print("Select failed. Exiting.\n");
 		close(slog_socket);
 		return 1;
 	    }
@@ -252,7 +247,8 @@ int main(int argc, char *argv[])
 		ret = recv(slog_socket, buf, MAXMSG - 1, 0);
 		if (ret < 0) {
 		    g_print
-			("Reading from the syslog socket failed. Exiting...\n");
+			("Reading from the syslog socket failed. Exiting.\n");
+		    close(slog_socket);
 		    return 1;
 		}
 	    }
