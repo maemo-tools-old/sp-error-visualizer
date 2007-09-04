@@ -40,11 +40,22 @@ case "$1" in
         	echo "Setting up the graphical display of errors"
 
 		if [ -e /dev/log ]; then
-		echo "Syslog daemon is present, piping its output"
+		echo "Syslog daemon is present, looking for the logfile..."
 
-# This is still a bit messy. We should check for alternative locations.
+		# Check for alternative syslog locations
 
-		tail -f /var/ftd-log/syslog | run-standalone.sh /usr/bin/sp-error-visualizer $VISUALIZER_OPTS &
+		if [ -e /var/ftd-log/syslog ]; then
+		    LOGFILE="/var/ftd-log/syslog"
+		elif [ -e /var/log/syslog ]; then
+		    LOGFILE="/var/log/syslog"
+		else
+		    echo "No logfiles in expected locations!"
+		    echo "Aborting, check your syslog configuration."
+		    exit 1
+		fi
+
+		echo "Log found from $LOGFILE, piping it to the visualizer"
+		tail -f $LOGFILE | run-standalone.sh /usr/bin/sp-error-visualizer $VISUALIZER_OPTS &
 		else
 			echo "No syslog file, using syslog socket"
 			run-standalone.sh sp-error-visualizer -s $VISUALIZER_OPTS &

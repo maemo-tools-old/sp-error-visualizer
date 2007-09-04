@@ -1,3 +1,10 @@
+sp-error-visualizer (0.0.4-1) unstable; urgency=low
+
+  * Check for alternative syslog locations to support different
+    configurations
+
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Tue,  4 Sep 2007 13:51:28 +0300
+
 sp-error-visualizer (0.0.3-1) unstable; urgency=low
 
   * Moved the sp-error-visualizer startup to occur after both desktop

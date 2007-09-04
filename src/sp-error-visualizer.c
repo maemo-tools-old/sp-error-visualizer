@@ -31,12 +31,12 @@
  sp-error-visualizer sp-error-visualizer.c
  *
  * usage example on device (your syslog file location may vary)
- tail -f /var/ftd-log/syslog | ./sp-error-visualizer -f syslog_patterns &
- tail -f /var/ftd-log/syslog | ./sp-error-visualizer GLIB &
+ tail -f /var/log/syslog | ./sp-error-visualizer -f syslog_patterns &
+ tail -f /var/log/syslog | ./sp-error-visualizer GLIB &
  ./sp-error-visualizer -s -f syslog_patterns &
  * usage exmple on SDK:
- tail -f /var/ftd-log/syslog | run-standalone.sh ./sp-error-visualizer -f syslog_patterns GLIB &
- tail -f /var/ftd-log/syslog | run-standalone.sh ./sp-error-visualizer GLIB &
+ tail -f /var/log/syslog | run-standalone.sh ./sp-error-visualizer -f syslog_patterns GLIB &
+ tail -f /var/log/syslog | run-standalone.sh ./sp-error-visualizer GLIB &
  *
  *
  Useful syslog_patterns compiled by Eero: 
