@@ -19,7 +19,10 @@
 sp-error-visualizer \- tool to display errors as banners
 .SH SYNOPSIS
 .B sp-error-visualizer
-.RI [ -s ] [ -f 
+.RI [ -s ]
+.RI [ -m 
+.IR FILE ]
+.RI [ -f 
 .IR FILE
 |
 .IR PATTERNS]
@@ -58,6 +61,12 @@ Read the filtering patterns from a file.
 .TP
 .B \-s
 Use syslog socket instead of the syslog daemon logfile to receive messages. However, attempts to use this option will fail if the logfile can be found.
+.br
+.TP
+.B \-m
+.IR FILE
+Monitor for the deletion and moving of the specified syslog file and exit once this happens. This can't be used with -s, as in that mode log files are not used. This option is provided as a workaround for environments without a version of tail that can follow a file based on name instead of a file descriptor, as in that case tail will not notice the log rotation and ceases to provide sp-error-visualizer any further messages to display. Making the sp-error-visualizer to exit when the log is rotated breaks the pipe, so the command pair can be invoked again manually or from a script.
+.br
 .SH FILES
 .B /var/run/sp-error-visualizer.pid
 .RS 

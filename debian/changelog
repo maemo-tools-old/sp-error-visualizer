@@ -2,8 +2,10 @@ sp-error-visualizer (0.0.4-1) unstable; urgency=low
 
   * Check for alternative syslog locations to support different
     configurations
+  * Added inotify-based log rotation monitoring support to work around
+    Busybox tail limitations
 
- -- Eero Tamminen <eero.tamminen@nokia.com>  Tue,  4 Sep 2007 13:51:28 +0300
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Wed,  5 Sep 2007 13:33:53 +0300
 
 sp-error-visualizer (0.0.3-1) unstable; urgency=low
 

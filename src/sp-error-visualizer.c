@@ -90,6 +90,8 @@ GLIB ERROR
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/syslog.h>
+#include <sys/inotify.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <libosso.h>
 
@@ -145,16 +147,16 @@ int main(int argc, char *argv[])
 {
     osso_context_t *osso_context;
     int numspaces, len;
-    char *patternfile = NULL;
+    char *patternfile = NULL, *logfile = NULL;
     char *p, *end;
     int pn, pattern_found;
-    int slog_socket = -1, readfromfile = 0;
+    int slog_socket = -1, readfromfile = 0, inotify_fd = -1, logwatch = -1;
     int optchar;
 
     struct sockaddr slog_socket_addr;
     fd_set fds;
 
-    while ((optchar = getopt(argc, argv, "sf:")) != -1) {
+    while ((optchar = getopt(argc, argv, "sm:f:")) != -1) {
 	switch (optchar) {
 
 	case 's':
@@ -201,6 +203,35 @@ int main(int argc, char *argv[])
 	    readfromfile = 1;
 	    break;
 
+	case 'm':
+	  logfile = (char *) optarg;
+	  /* if we're not using syslog socket (i.e. we're getting data from
+	     standard input, we'll have to initialize an inotify queue for
+	     monitoring log rotation as a workaround for the current
+	     limitations in the busybox tail. */
+	  
+	  if (slog_socket < 0) {
+	    
+	    inotify_fd = inotify_init();
+	    if (inotify_fd < 0) {
+	      perror("inotify_init failed: ");
+	      g_print("Aborting...");
+	    }
+
+	    g_print("Starting inotify monitoring for file %s\n", logfile);
+	    logwatch = inotify_add_watch(inotify_fd, logfile,
+					 IN_MOVE_SELF | IN_DELETE_SELF);
+	    if (logwatch < 0) {
+	      perror("inotify_add_watch failed: ");
+	    }
+	    break;
+	  }
+	  else {
+	    g_print("-m does not make sense in syslogd replacement mode.\n");
+	    close(slog_socket);
+	    return 1;
+	  }
+
 	default:
 	    g_print
 		("Please look at the documentation for usage information\n");
@@ -231,9 +262,30 @@ int main(int argc, char *argv[])
 	memset(&buf, '\0', sizeof(buf));
 
 	if (slog_socket < 0) {
+
+	  FD_ZERO(&fds);
+	  FD_SET(0, &fds);
+	  FD_SET(inotify_fd, &fds);
+
+	  if (select(inotify_fd + 1, &fds, NULL, NULL, NULL) < 0) {
+	    g_print("Select failed. Exiting.\n");
+	    close(inotify_fd);
+	    return 1;
+	  }
+	  else if (FD_ISSET(inotify_fd, &fds)) {
+	    /* We don't really have to read the actual event, as
+	       anything that triggers our rule means that we need
+	       to exit anyway. */
+	    /* FIXME: Other cleanup needed? */
+	    close(inotify_fd);
+	    exit(0);
+	  }
+	  else if (FD_ISSET(0, &fds)) {
 	    if (!fgets(buf, MAXMSG, stdin)) {
-		break;
-	    }
+	      break;
+ 	    }
+	  }
+	      
 	} else {
 	    FD_ZERO(&fds);
 	    FD_SET(slog_socket, &fds);
@@ -290,8 +342,11 @@ int main(int argc, char *argv[])
 	    p[len - 1] = 0;
 	}
 	osso_system_note_infoprint(osso_context, p, NULL);
-    }
+	}
 
     osso_deinitialize(osso_context);
+    if (inotify_fd > 0) {
+      close(inotify_fd);
+      }
     return 0;
-}
+    }
