@@ -33,7 +33,6 @@ fi
 PIDFILE="/var/run/sp-error-visualizer.pid"
 
 get_and_store_visualizer_pid() {
-RESTARTER_SUBSHELL_PID=$1
 
 # As we start the error-visualizer in an async fashion,
 # pidof might initially return an empty PID. On the other
@@ -52,9 +51,6 @@ RESTARTER_SUBSHELL_PID=$1
 	echo "Couldn't start sp-error-visualizer!"
     else
 	echo $VISUALIZER_PID > /var/run/sp-error-visualizer.pid
-	if [ "$RESTARTER_SUBSHELL_PID" -ne 0 ]; then
-	    echo $RESTARTER_SUBSHELL_PID > /var/run/sp-error-visualizer-restarter.pid
-	fi
     fi
 }
 
@@ -81,9 +77,8 @@ case "$1" in
 		fi
 
 		echo "Log found from $LOGFILE, piping it to the visualizer"
-		(while true; do ( (sleep 1 ; get_and_store_visualizer_pid 0 ) & tail -f $LOGFILE | run-standalone.sh /usr/bin/sp-error-visualizer $VISUALIZER_OPTS -m $LOGFILE ) ; done) &
+		run-standalone.sh /usr/bin/sp-error-visualizer $VISUALIZER_OPTS -m $LOGFILE &
 		sleep 1
-		RESTARTER_SUBSHELL_PID=$!
 		else
 			echo "No syslog file, using syslog socket"
 			run-standalone.sh sp-error-visualizer -s $VISUALIZER_OPTS &
@@ -91,18 +86,11 @@ case "$1" in
 			# created by us
 			touch /var/run/sp-error-visualizer-syslog-sock
 		fi
-			get_and_store_visualizer_pid $RESTARTER_SUBSHELL_PID
+			get_and_store_visualizer_pid
 	fi
         ;;
   stop)
         echo "Shutting down the graphical display of errors"
-
-	if [  -e /var/run/sp-error-visualizer-restarter.pid ]; then
-	    kill $(cat /var/run/sp-error-visualizer-restarter.pid)
-	    rm /var/run/sp-error-visualizer-restarter.pid;
-	    echo "sp-error-visualizer-restarter stopped."
-	    sleep 1
-	fi
 
 	if [ -e /var/run/sp-error-visualizer.pid ]; then
 	    kill $(cat /var/run/sp-error-visualizer.pid)

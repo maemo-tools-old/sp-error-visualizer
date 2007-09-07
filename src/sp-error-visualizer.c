@@ -99,6 +99,9 @@ GLIB ERROR
 #define MAXMSG (256)
 #define MAXPATTERNS (256)
 
+#define EVENT_SIZE (sizeof (struct inotify_event))
+#define INOTIFY_BUF_SIZE 1*(EVENT_SIZE + 16)
+
 char buf[MAXMSG + 1];
 char prev[MAXMSG + 1];
 char *pattern[MAXPATTERNS];
@@ -143,18 +146,37 @@ void read_patterns(char *fname)
 	    fname);
 }
 
+int add_logfile_creation_monitor(FILE *logfile, char *logfilepath,
+				 int inotify_fd, int logwatch)
+{
+  char *dir_name = g_path_get_dirname(logfilepath);
+  inotify_rm_watch(inotify_fd, logwatch);
+  fclose(logfile);
+
+  /* Create a watch for the creation of logfile */
+  logwatch = inotify_add_watch(inotify_fd, dir_name, IN_CREATE);
+  g_free(dir_name);
+
+  if (logwatch < 0) {
+    perror("inotify_add_watch failed: ");
+  }
+  return logwatch;
+}
+
 int main(int argc, char *argv[])
 {
     osso_context_t *osso_context;
     int numspaces, len;
-    char *patternfile = NULL, *logfile = NULL;
+    char *patternfile = NULL, *logfilepath = NULL;
     char *p, *end;
     int pn, pattern_found;
     int slog_socket = -1, readfromfile = 0, inotify_fd = -1, logwatch = -1;
+    int log_fd = -1;
     int optchar;
 
     struct sockaddr slog_socket_addr;
     fd_set fds;
+    FILE *logfile = NULL;
 
     while ((optchar = getopt(argc, argv, "sm:f:")) != -1) {
 	switch (optchar) {
@@ -204,33 +226,45 @@ int main(int argc, char *argv[])
 	    break;
 
 	case 'm':
-	  logfile = (char *) optarg;
+	  logfilepath = (char *) optarg;
 	  /* if we're not using syslog socket (i.e. we're getting data from
 	     standard input, we'll have to initialize an inotify queue for
 	     monitoring log rotation as a workaround for the current
 	     limitations in the busybox tail. */
 	  
 	  if (slog_socket < 0) {
-	    
+
+	    /* Check that the logfile exists */
+
+	    if ( (logfile = fopen(logfilepath, "r")) == NULL)
+	      {
+		perror("Could not open logfile: ");
+		exit(EXIT_FAILURE);
+	      }
+
+	    /* We want only to read the very latest entries */
+	    fseek(logfile, 0, SEEK_END);
+
 	    inotify_fd = inotify_init();
 	    if (inotify_fd < 0) {
 	      perror("inotify_init failed: ");
 	      g_print("Aborting...");
 	    }
 
-	    g_print("Starting inotify monitoring for file %s\n", logfile);
-	    logwatch = inotify_add_watch(inotify_fd, logfile,
-					 IN_MOVE_SELF | IN_DELETE_SELF);
+	    g_print("Starting inotify monitoring for file %s\n", logfilepath);
+	    logwatch = inotify_add_watch(inotify_fd, logfilepath,
+					 IN_MODIFY | IN_MOVE_SELF |
+					 IN_DELETE_SELF);
 	    if (logwatch < 0) {
 	      perror("inotify_add_watch failed: ");
 	    }
-	    break;
 	  }
 	  else {
 	    g_print("-m does not make sense in syslogd replacement mode.\n");
 	    close(slog_socket);
 	    return 1;
 	  }
+	  break;
 
 	default:
 	    g_print
@@ -259,12 +293,13 @@ int main(int argc, char *argv[])
 
     while (1) {
 
-	memset(&buf, '\0', sizeof(buf));
+      memset(&buf, '\0', sizeof(buf));
 
-	if (slog_socket < 0) {
+	if (slog_socket < 0 ) {
+
+	  /* Fallback to stdin source, if no files are monitored */
 
 	  FD_ZERO(&fds);
-	  FD_SET(0, &fds);
 	  FD_SET(inotify_fd, &fds);
 
 	  if (select(inotify_fd + 1, &fds, NULL, NULL, NULL) < 0) {
@@ -273,20 +308,55 @@ int main(int argc, char *argv[])
 	    return 1;
 	  }
 	  else if (FD_ISSET(inotify_fd, &fds)) {
-	    /* We don't really have to read the actual event, as
-	       anything that triggers our rule means that we need
-	       to exit anyway. */
-	    /* FIXME: Other cleanup needed? */
-	    close(inotify_fd);
-	    exit(0);
-	  }
-	  else if (FD_ISSET(0, &fds)) {
-	    if (!fgets(buf, MAXMSG, stdin)) {
-	      break;
- 	    }
-	  }
+	    char inotify_buf[INOTIFY_BUF_SIZE];
+	    int len = 0;
+	    struct inotify_event *event;
+
+	    /* Handle inotify events */
+
+	    len = read (inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
+	    if (len < 0) {
+	      perror("Reading inotify queue failed ");
+	    }
+
+	    event = (struct inotify_event *)&inotify_buf[0];
+	    if (event->len > 0) { g_print("name: %s\n", event->name); }
+	    if (event->mask == IN_DELETE_SELF || event->mask == IN_MOVE_SELF)
+	      {
+		logwatch = add_logfile_creation_monitor(logfile, logfilepath,
+							inotify_fd, logwatch);
+		if (logwatch < 0) {
+		  g_print("Could not handle log rotation.\n");
+		  close(inotify_fd);
+		  return 1;
+		}
+	      }
+	    if (event->mask == IN_CREATE && event->name &&
+		strcmp(event->name, logfilepath) ) {
+	     
+		logfile = fopen(logfilepath, "r");
+		if (logfile == NULL) {
+		  g_print("Could not (re)open the logfile!\n");
+		}
+		inotify_rm_watch(inotify_fd, logwatch);
+		g_print("Starting inotify monitoring for file %s\n", logfilepath);
+		logwatch = inotify_add_watch(inotify_fd, logfilepath,
+					     IN_MODIFY | IN_MOVE_SELF
+					     | IN_DELETE_SELF);
+		if (logwatch < 0) {
+		  perror("inotify_add_watch failed: ");
+		}
+		
+	    }
+	    else if (event->mask == IN_MODIFY) {
+	      if (!fgets(buf, MAXMSG, logfile)) {
+		break;
+	      }
+	    }
 	      
-	} else {
+	  } 
+
+    } else {
 	    FD_ZERO(&fds);
 	    FD_SET(slog_socket, &fds);
 	    if (select(slog_socket + 1, &fds, NULL, NULL, NULL) < 0) {
@@ -342,7 +412,7 @@ int main(int argc, char *argv[])
 	    p[len - 1] = 0;
 	}
 	osso_system_note_infoprint(osso_context, p, NULL);
-	}
+        }
 
     osso_deinitialize(osso_context);
     if (inotify_fd > 0) {
