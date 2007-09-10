@@ -169,6 +169,7 @@ int main(int argc, char *argv[])
     int numspaces, len;
     char *patternfile = NULL, *logfilepath = NULL;
     char *p, *end;
+    char inotify_buf[INOTIFY_BUF_SIZE];
     int pn, pattern_found;
     int slog_socket = -1, readfromfile = 0, inotify_fd = -1, logwatch = -1;
     int log_fd = -1;
@@ -185,11 +186,10 @@ int main(int argc, char *argv[])
 
 	    /* The check below might fail for other reasons than the
 	       non-existence of the socket. However, in that case reading
-	       from the logfile via piping to stdin probably fails too */
+	       from the logfile probably fails too... */
 
 	    if ((access(_PATH_LOG, F_OK) == 0)) {
-		g_print
-		    ("Won't read from socket as syslog appears to exist.\n");
+		g_print("Won't read from socket as /dev/log already exists.\n");
 		g_print("See documentation for more details.\n");
 		return 1;
 	    }
@@ -314,16 +314,18 @@ int main(int argc, char *argv[])
 	  break;
 	}
 
-	if (FD_ISSET(inotify_fd, &fds)) {
-	  char inotify_buf[INOTIFY_BUF_SIZE];
+	if (inotify_fd > 0 && FD_ISSET(inotify_fd, &fds)) {
 	  int len = 0;
 	  struct inotify_event *event;
+
+	  memset(&inotify_buf, '\0', sizeof(inotify_buf));
 	  
 	  /* Handle inotify events */
 	  
-	  len = read (inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
+	  len = read(inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
 	  if (len < 0) {
 	    perror("Reading inotify queue failed ");
+	    continue;
 	  }
 	  
 	  event = (struct inotify_event *)&inotify_buf[0];
@@ -334,8 +336,7 @@ int main(int argc, char *argv[])
 						      inotify_fd, logwatch);
 	      if (logwatch < 0) {
 		g_print("Could not handle log rotation.\n");
-		close(inotify_fd);
-		return 1;
+		break;
 	      }
 	    }
 	  if (event->mask == IN_CREATE && event->name &&
@@ -362,14 +363,13 @@ int main(int argc, char *argv[])
 	    }
 	    }
 	}
-	else if (FD_ISSET(slog_socket, &fds)) {
+	else if (slog_socket > 0 && FD_ISSET(slog_socket, &fds)) {
 	  int ret;
 	  ret = recv(slog_socket, buf, MAXMSG - 1, 0);
 	  if (ret < 0) {
-	    g_print
-			("Reading from the syslog socket failed. Exiting.\n");
+	    g_print("Reading from the syslog socket failed. Exiting.\n");
 	    close(slog_socket);
-	    return 1;
+	    break;
 	  }
 	}
       }
@@ -410,7 +410,7 @@ int main(int argc, char *argv[])
 	    p[len - 1] = 0;
 	}
 	osso_system_note_infoprint(osso_context, p, NULL);
-        }
+    }
 
     osso_deinitialize(osso_context);
     if (inotify_fd > 0) {
