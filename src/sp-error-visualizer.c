@@ -30,10 +30,11 @@
  gcc `pkg-config --cflags --libs libosso` -g -Wall -O2 -o \ 
  sp-error-visualizer sp-error-visualizer.c
  *
- * usage example on device (your syslog file location may vary)
+ * usage examples on device (your syslog file location may vary)
  tail -f /var/log/syslog | ./sp-error-visualizer -f syslog_patterns &
  tail -f /var/log/syslog | ./sp-error-visualizer GLIB &
  ./sp-error-visualizer -s -f syslog_patterns &
+ ./sp-error-visualizer -m /var/log/syslog -f syslog_patterns &
  * usage exmple on SDK:
  tail -f /var/log/syslog | run-standalone.sh ./sp-error-visualizer -f syslog_patterns GLIB &
  tail -f /var/log/syslog | run-standalone.sh ./sp-error-visualizer GLIB &
@@ -146,21 +147,21 @@ void read_patterns(char *fname)
 	    fname);
 }
 
-int add_logfile_creation_monitor(FILE *logfile, char *logfilepath,
+int add_logfile_creation_monitor(FILE * logfile, char *logfilepath,
 				 int inotify_fd, int logwatch)
 {
-  char *dir_name = g_path_get_dirname(logfilepath);
-  inotify_rm_watch(inotify_fd, logwatch);
-  fclose(logfile);
+    char *dir_name = g_path_get_dirname(logfilepath);
+    inotify_rm_watch(inotify_fd, logwatch);
+    fclose(logfile);
 
-  /* Create a watch for the creation of logfile */
-  logwatch = inotify_add_watch(inotify_fd, dir_name, IN_CREATE);
-  g_free(dir_name);
+    /* Create a watch for the creation of logfile */
+    logwatch = inotify_add_watch(inotify_fd, dir_name, IN_CREATE);
+    g_free(dir_name);
 
-  if (logwatch < 0) {
-    perror("inotify_add_watch failed: ");
-  }
-  return logwatch;
+    if (logwatch < 0) {
+	perror("inotify_add_watch failed: ");
+    }
+    return logwatch;
 }
 
 int main(int argc, char *argv[])
@@ -189,7 +190,8 @@ int main(int argc, char *argv[])
 	       from the logfile probably fails too... */
 
 	    if ((access(_PATH_LOG, F_OK) == 0)) {
-		g_print("Won't read from socket as /dev/log already exists.\n");
+		g_print
+		    ("Won't read from socket as /dev/log already exists.\n");
 		g_print("See documentation for more details.\n");
 		return 1;
 	    }
@@ -208,7 +210,7 @@ int main(int argc, char *argv[])
 		     strlen(slog_socket_addr.sa_data)) == -1) {
 		g_warning("Syslog socket invocation failed!\n");
 		perror("Reason was ");
-		return (1);
+		return 1;
 	    }
 
 	    /* Setup permissions to allow everybody r/w access to log */
@@ -226,45 +228,47 @@ int main(int argc, char *argv[])
 	    break;
 
 	case 'm':
-	  logfilepath = (char *) optarg;
-	  /* if we're not using syslog socket (i.e. we're getting data from
-	     a logfile, we'll have to initialize an inotify queue for
-	     monitoring log rotation as a workaround for the current
-	     limitations in the busybox tail. */
-	  
-	  if (slog_socket < 0) {
+	    logfilepath = (char *) optarg;
+	    /* if we're not using syslog socket (i.e. we're getting data from
+	       a logfile, we'll have to initialize an inotify queue for
+	       monitoring log rotation as a workaround for the current
+	       limitations in the busybox tail. */
 
-	    /* Check that the logfile exists */
+	    if (slog_socket < 0) {
 
-	    if ( (logfile = fopen(logfilepath, "r")) == NULL)
-	      {
-		perror("Could not open logfile: ");
-		exit(EXIT_FAILURE);
-	      }
+		/* Check that the logfile exists */
 
-	    /* We want only to read the very latest entries */
-	    fseek(logfile, 0, SEEK_END);
+		if ((logfile = fopen(logfilepath, "r")) == NULL) {
+		    perror("Could not open logfile: ");
+		    exit(EXIT_FAILURE);
+		}
 
-	    inotify_fd = inotify_init();
-	    if (inotify_fd < 0) {
-	      perror("inotify_init failed: ");
-	      g_print("Aborting...");
+		/* We want only to read the very latest entries */
+		fseek(logfile, 0, SEEK_END);
+
+		inotify_fd = inotify_init();
+		if (inotify_fd < 0) {
+		    perror("inotify_init failed: ");
+		    g_print("Aborting...");
+		    return 1;
+		}
+
+		g_print("Starting inotify monitoring for file %s\n",
+			logfilepath);
+		logwatch =
+		    inotify_add_watch(inotify_fd, logfilepath,
+				      IN_MODIFY | IN_MOVE_SELF |
+				      IN_DELETE_SELF);
+		if (logwatch < 0) {
+		    perror("inotify_add_watch failed: ");
+		}
+	    } else {
+		g_print
+		    ("-m does not make sense in syslogd replacement mode.\n");
+		close(slog_socket);
+		return 1;
 	    }
-
-	    g_print("Starting inotify monitoring for file %s\n", logfilepath);
-	    logwatch = inotify_add_watch(inotify_fd, logfilepath,
-					 IN_MODIFY | IN_MOVE_SELF |
-					 IN_DELETE_SELF);
-	    if (logwatch < 0) {
-	      perror("inotify_add_watch failed: ");
-	    }
-	  }
-	  else {
-	    g_print("-m does not make sense in syslogd replacement mode.\n");
-	    close(slog_socket);
-	    return 1;
-	  }
-	  break;
+	    break;
 
 	default:
 	    g_print
@@ -289,92 +293,93 @@ int main(int argc, char *argv[])
 
     while (1) {
 
-      int fd = 0;
-      memset(&buf, '\0', sizeof(buf));
-      FD_ZERO(&fds);
-      
-      if (slog_socket < 0 && inotify_fd > -1) {
-	  FD_SET(inotify_fd, &fds);
-	  fd = inotify_fd;
-      }
-      else if (slog_socket > 0) {
-	FD_SET(slog_socket, &fds);
-	fd = slog_socket;
-      }
+	int fd = 0;
+	memset(&buf, '\0', sizeof(buf));
+	FD_ZERO(&fds);
 
-      if (fd == 0) {
-	if (!fgets(buf, MAXMSG, stdin)) {
-	  break;
-	}
-      }
-      else {
-	if (select(fd + 1, &fds, NULL, NULL, NULL) < 0) {
-	  g_print("Select failed. Exiting.\n");
-	  close(fd);
-	  break;
+	if (slog_socket < 0 && inotify_fd > -1) {
+	    FD_SET(inotify_fd, &fds);
+	    fd = inotify_fd;
+	} else if (slog_socket > 0) {
+	    FD_SET(slog_socket, &fds);
+	    fd = slog_socket;
 	}
 
-	if (inotify_fd > 0 && FD_ISSET(inotify_fd, &fds)) {
-	  int len = 0;
-	  struct inotify_event *event;
-
-	  memset(&inotify_buf, '\0', sizeof(inotify_buf));
-	  
-	  /* Handle inotify events */
-	  
-	  len = read(inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
-	  if (len < 0) {
-	    perror("Reading inotify queue failed ");
-	    continue;
-	  }
-	  
-	  event = (struct inotify_event *)&inotify_buf[0];
-	  if (event->len > 0) { g_print("name: %s\n", event->name); }
-	  if (event->mask == IN_DELETE_SELF || event->mask == IN_MOVE_SELF)
-	    {
-	      logwatch = add_logfile_creation_monitor(logfile, logfilepath,
-						      inotify_fd, logwatch);
-	      if (logwatch < 0) {
-		g_print("Could not handle log rotation.\n");
+	if (fd == 0) {
+	    if (!fgets(buf, MAXMSG, stdin)) {
 		break;
-	      }
 	    }
-	  if (event->mask == IN_CREATE && event->name &&
-	      strcmp(event->name, logfilepath) ) {
-	    
-	    logfile = fopen(logfilepath, "r");
-		if (logfile == NULL) {
-		  g_print("Could not (re)open the logfile!\n");
-		}
-		inotify_rm_watch(inotify_fd, logwatch);
-		g_print("Starting inotify monitoring for file %s\n",
-			logfilepath);
-		logwatch = inotify_add_watch(inotify_fd, logfilepath,
-					     IN_MODIFY | IN_MOVE_SELF
-					     | IN_DELETE_SELF);
-		if (logwatch < 0) {
-		  perror("inotify_add_watch failed: ");
-		}
-		
-	  } 
-	  else if (event->mask == IN_MODIFY) {
-	    if (!fgets(buf, MAXMSG, logfile)) {
-	      break;
+	} else {
+	    if (select(fd + 1, &fds, NULL, NULL, NULL) < 0) {
+		g_print("Select failed. Exiting.\n");
+		close(fd);
+		break;
 	    }
+
+	    if (inotify_fd > 0 && FD_ISSET(inotify_fd, &fds)) {
+		int len = 0;
+		struct inotify_event *event;
+
+		memset(&inotify_buf, '\0', sizeof(inotify_buf));
+
+		/* Handle inotify events */
+
+		len = read(inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
+		if (len < 0) {
+		    perror("Reading inotify queue failed ");
+		    continue;
+		}
+
+		event = (struct inotify_event *) &inotify_buf[0];
+		if (event->len > 0) {
+		    g_print("name: %s\n", event->name);
+		}
+		if (event->mask == IN_DELETE_SELF
+		    || event->mask == IN_MOVE_SELF) {
+		    logwatch =
+			add_logfile_creation_monitor(logfile, logfilepath,
+						     inotify_fd, logwatch);
+		    if (logwatch < 0) {
+			g_print("Could not handle log rotation.\n");
+			break;
+		    }
+		}
+		if (event->mask == IN_CREATE && event->name &&
+		    strcmp(event->name, logfilepath)) {
+
+		    logfile = fopen(logfilepath, "r");
+		    if (logfile == NULL) {
+			g_print("Could not (re)open the logfile!\n");
+			break;
+		    }
+		    inotify_rm_watch(inotify_fd, logwatch);
+		    g_print("Starting inotify monitoring for file %s\n",
+			    logfilepath);
+		    logwatch = inotify_add_watch(inotify_fd, logfilepath,
+						 IN_MODIFY | IN_MOVE_SELF
+						 | IN_DELETE_SELF);
+		    if (logwatch < 0) {
+			perror("inotify_add_watch failed: ");
+			break;
+		    }
+
+		} else if (event->mask == IN_MODIFY) {
+		    if (!fgets(buf, MAXMSG, logfile)) {
+			break;
+		    }
+		}
+	    } else if (slog_socket > 0 && FD_ISSET(slog_socket, &fds)) {
+		int ret;
+		ret = recv(slog_socket, buf, MAXMSG - 1, 0);
+		if (ret < 0) {
+		    g_print
+			("Reading from the syslog socket failed. Exiting.\n");
+		    break;
+		}
 	    }
 	}
-	else if (slog_socket > 0 && FD_ISSET(slog_socket, &fds)) {
-	  int ret;
-	  ret = recv(slog_socket, buf, MAXMSG - 1, 0);
-	  if (ret < 0) {
-	    g_print("Reading from the syslog socket failed. Exiting.\n");
-	    close(slog_socket);
-	    break;
-	  }
-	}
-      }
-      p = buf;
-      end = buf + MAXMSG;
+	p = buf;
+	end = buf + MAXMSG;
 
 	/*
 	 * poor man parser to ignore prefix of typical syslog line:
@@ -414,7 +419,10 @@ int main(int argc, char *argv[])
 
     osso_deinitialize(osso_context);
     if (inotify_fd > 0) {
-      close(inotify_fd);
-      }
+	close(inotify_fd);
+    }
+    if (slog_socket > 0) {
+        close(slog_socket);
+    }
     return 0;
 }
