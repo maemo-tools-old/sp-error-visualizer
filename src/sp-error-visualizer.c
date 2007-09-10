@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 	case 'm':
 	  logfilepath = (char *) optarg;
 	  /* if we're not using syslog socket (i.e. we're getting data from
-	     standard input, we'll have to initialize an inotify queue for
+	     a logfile, we'll have to initialize an inotify queue for
 	     monitoring log rotation as a workaround for the current
 	     limitations in the busybox tail. */
 	  
@@ -287,59 +287,67 @@ int main(int argc, char *argv[])
 	return 1;
     }
 
-    /* Using fdopen and fcntl/setsockopts might allow using just fgets
-       for both socket and piped input, but the below approach is
-       probably safer */
-
     while (1) {
 
+      int fd = 0;
       memset(&buf, '\0', sizeof(buf));
-
-	if (slog_socket < 0 ) {
-
-	  /* Fallback to stdin source, if no files are monitored */
-
-	  FD_ZERO(&fds);
+      FD_ZERO(&fds);
+      
+      if (slog_socket < 0 && inotify_fd > -1) {
 	  FD_SET(inotify_fd, &fds);
+	  fd = inotify_fd;
+      }
+      else if (slog_socket > 0) {
+	FD_SET(slog_socket, &fds);
+	fd = slog_socket;
+      }
 
-	  if (select(inotify_fd + 1, &fds, NULL, NULL, NULL) < 0) {
-	    g_print("Select failed. Exiting.\n");
-	    close(inotify_fd);
-	    return 1;
+      if (fd == 0) {
+	if (!fgets(buf, MAXMSG, stdin)) {
+	  break;
+	}
+      }
+      else {
+	if (select(fd + 1, &fds, NULL, NULL, NULL) < 0) {
+	  g_print("Select failed. Exiting.\n");
+	  close(fd);
+	  break;
+	}
+
+	if (FD_ISSET(inotify_fd, &fds)) {
+	  char inotify_buf[INOTIFY_BUF_SIZE];
+	  int len = 0;
+	  struct inotify_event *event;
+	  
+	  /* Handle inotify events */
+	  
+	  len = read (inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
+	  if (len < 0) {
+	    perror("Reading inotify queue failed ");
 	  }
-	  else if (FD_ISSET(inotify_fd, &fds)) {
-	    char inotify_buf[INOTIFY_BUF_SIZE];
-	    int len = 0;
-	    struct inotify_event *event;
-
-	    /* Handle inotify events */
-
-	    len = read (inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
-	    if (len < 0) {
-	      perror("Reading inotify queue failed ");
-	    }
-
-	    event = (struct inotify_event *)&inotify_buf[0];
-	    if (event->len > 0) { g_print("name: %s\n", event->name); }
-	    if (event->mask == IN_DELETE_SELF || event->mask == IN_MOVE_SELF)
-	      {
-		logwatch = add_logfile_creation_monitor(logfile, logfilepath,
-							inotify_fd, logwatch);
-		if (logwatch < 0) {
-		  g_print("Could not handle log rotation.\n");
-		  close(inotify_fd);
-		  return 1;
-		}
+	  
+	  event = (struct inotify_event *)&inotify_buf[0];
+	  if (event->len > 0) { g_print("name: %s\n", event->name); }
+	  if (event->mask == IN_DELETE_SELF || event->mask == IN_MOVE_SELF)
+	    {
+	      logwatch = add_logfile_creation_monitor(logfile, logfilepath,
+						      inotify_fd, logwatch);
+	      if (logwatch < 0) {
+		g_print("Could not handle log rotation.\n");
+		close(inotify_fd);
+		return 1;
 	      }
-	    if (event->mask == IN_CREATE && event->name &&
-		strcmp(event->name, logfilepath) ) {
-	     
-		logfile = fopen(logfilepath, "r");
+	    }
+	  if (event->mask == IN_CREATE && event->name &&
+	      strcmp(event->name, logfilepath) ) {
+	    
+	    logfile = fopen(logfilepath, "r");
 		if (logfile == NULL) {
 		  g_print("Could not (re)open the logfile!\n");
 		}
 		inotify_rm_watch(inotify_fd, logwatch);
-		g_print("Starting inotify monitoring for file %s\n", logfilepath);
+		g_print("Starting inotify monitoring for file %s\n",
+			logfilepath);
 		logwatch = inotify_add_watch(inotify_fd, logfilepath,
 					     IN_MODIFY | IN_MOVE_SELF
 					     | IN_DELETE_SELF);
@@ -347,36 +355,26 @@ int main(int argc, char *argv[])
 		  perror("inotify_add_watch failed: ");
 		}
 		
-	    }
-	    else if (event->mask == IN_MODIFY) {
-	      if (!fgets(buf, MAXMSG, logfile)) {
-		break;
-	      }
-	    }
-	      
 	  } 
-
-    } else {
-	    FD_ZERO(&fds);
-	    FD_SET(slog_socket, &fds);
-	    if (select(slog_socket + 1, &fds, NULL, NULL, NULL) < 0) {
-		g_print("Select failed. Exiting.\n");
-		close(slog_socket);
-		return 1;
+	  else if (event->mask == IN_MODIFY) {
+	    if (!fgets(buf, MAXMSG, logfile)) {
+	      break;
 	    }
-	    if (FD_ISSET(slog_socket, &fds)) {
-		int ret;
-		ret = recv(slog_socket, buf, MAXMSG - 1, 0);
-		if (ret < 0) {
-		    g_print
-			("Reading from the syslog socket failed. Exiting.\n");
-		    close(slog_socket);
-		    return 1;
-		}
 	    }
 	}
-	p = buf;
-	end = buf + MAXMSG;
+	else if (FD_ISSET(slog_socket, &fds)) {
+	  int ret;
+	  ret = recv(slog_socket, buf, MAXMSG - 1, 0);
+	  if (ret < 0) {
+	    g_print
+			("Reading from the syslog socket failed. Exiting.\n");
+	    close(slog_socket);
+	    return 1;
+	  }
+	}
+      }
+      p = buf;
+      end = buf + MAXMSG;
 
 	/*
 	 * poor man parser to ignore prefix of typical syslog line:
@@ -419,4 +417,4 @@ int main(int argc, char *argv[])
       close(inotify_fd);
       }
     return 0;
-    }
+}
