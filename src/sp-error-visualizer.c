@@ -96,6 +96,9 @@ GLIB ERROR
 #include <fcntl.h>
 #include <libosso.h>
 
+#define _GNU_SOURCE
+#include <getopt.h>
+
 #define SYSLOG_MONITOR_DBUS_SERVICE "syslog_monitor"
 #define MAXMSG (256)
 #define MAXPATTERNS (256)
@@ -173,7 +176,6 @@ int main(int argc, char *argv[])
     char inotify_buf[INOTIFY_BUF_SIZE];
     int pn, pattern_found;
     int slog_socket = -1, readfromfile = 0, inotify_fd = -1, logwatch = -1;
-    int log_fd = -1;
     int optchar;
 
     struct sockaddr slog_socket_addr;
