@@ -1,7 +1,7 @@
 /*
  * This file is part of sp-error-visualizer
  *
- * Copyright (C) 2006 Nokia Corporation. 
+ * Copyright (C) 2007 Nokia Corporation. 
  *
  * Contact: Eero Tamminen <eero.tamminen@nokia.com>
  *
