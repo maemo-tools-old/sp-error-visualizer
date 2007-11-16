@@ -32,7 +32,7 @@ The
 .B sp-error-visualizer 
 provides a way of displaying text content (optionally filtered against a set of patterns) as banners. The primary purpose of this tool is to provide a way to display various error messages from syslog in a more easily visible manner to the developers and testers.
 .PP
-All data to be potentially displayed is received either via the standard input, reading directly from the logfile or via syslog socket (useful if the environment does not have a syslog daemon). The default source is the standard input. By default no input filtering is done. Invividual messages are terminated by linefeeds in addition to the usual NULL terrmination. Additionally, messages longer than 256 bytes will be truncated to that limit.
+All data to be potentially displayed is received either via the standard input, reading directly from the logfile or via syslog socket (useful if the environment does not have a syslog daemon). The default source is the standard input. By default no input filtering is done. Invividual messages are terminated by linefeeds in addition to the usual NULL termination. Additionally, messages longer than 256 bytes will be truncated to that limit.
 .PP
 Currently, a maximum of 256 matching patterns are supported. The patterns can be provided either from a file (see
 .B -f
@@ -69,6 +69,10 @@ Use syslog socket instead of the syslog daemon logfile to receive messages. Howe
 Read logs from the specified file directly. The specified file is also monitored for deletion and moving events by using inotify. When such event is detected, the file is automatically reopened. This can't be used with -s, as in that mode syslog files are not used. This option is provided as a workaround for environments without a version of tail that can follow a file based on name instead of a file descriptor, as in that case tail will not notice the log rotation and ceases to provide sp-error-visualizer any further messages to display.
 .br
 .SH FILES
+.B /usr/share/sp-error-visualizer/data/syslog-common-errors.conf
+.RS
+An example set of known-good filtering rules to use with the -f option. 
+.RE
 .B /var/run/sp-error-visualizer.pid
 .RS 
 When started via the provided initscript, this file contains the PID of syslog-displaying sp-error-visualizer instance.

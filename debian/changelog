@@ -1,3 +1,9 @@
+sp-error-visualizer (0.0.6-1) unstable; urgency=low
+
+  * Minor fixes to the manual page. Fixes: NB#75879
+
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Fri, 16 Nov 2007 10:20:51 +0200
+
 sp-error-visualizer (0.0.5-1) unstable; urgency=low
 
   * Fixed incorrect year in copyright information
