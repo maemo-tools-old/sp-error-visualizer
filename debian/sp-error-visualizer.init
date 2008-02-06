@@ -110,9 +110,17 @@ case "$1" in
 	/etc/init.d/sp-error-visualizer stop
 	/etc/init.d/sp-error-visualizer start
 	;;
+    force-reload)
+	# As the sp-error-visualizer does not currently support
+	# runtime configuration reloading, this action is equivalent
+	# of restarting the service for now.
+
+	echo "Force-reloading the sp-error-visualizer"
+	/etc/init.d/sp-error-visualizer restart
+	;;
   *)
         N=/etc/init.d/sp-error-visualizer
-        echo "Usage: $N {start|stop|restart)" >&2
+        echo "Usage: $N {start|stop|restart|force-reload)" >&2
         exit 1
         ;;
 esac

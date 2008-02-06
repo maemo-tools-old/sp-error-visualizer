@@ -1,3 +1,10 @@
+sp-error-visualizer (0.0.7-1) unstable; urgency=low
+
+  * Add force-reload action to the sp-error-visualizer initscript to be
+    more LSB-compliant.
+
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Mon, 28 Jan 2008 16:28:54 +0200
+
 sp-error-visualizer (0.0.6-1) unstable; urgency=low
 
   * Minor fixes to the manual page. Fixes: NB#75879
