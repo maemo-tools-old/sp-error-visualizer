@@ -1,3 +1,9 @@
+sp-error-visualizer (0.0.8-1) unstable; urgency=low
+
+  * Common syslog error matching data has been updated. Fixes: NB#86806
+
+ -- Eero Tamminen <eero.tamminen@nokia.com>  Tue, 29 Jul 2008 15:26:29 +0300
+
 sp-error-visualizer (0.0.7-1) unstable; urgency=low
 
   * Add force-reload action to the sp-error-visualizer initscript to be
