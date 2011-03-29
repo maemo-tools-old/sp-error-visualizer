@@ -10,5 +10,5 @@ distclean: clean
 
 sp-error-visualizer: sp-error-visualizer.c
 	gcc $(CFLAGS) -g -pedantic-errors -Wall -Wunreachable-code -std=c99 \
-	`pkg-config --libs --cflags libosso` -o $@ $^
+	`pkg-config --libs --cflags dbus-glib-1` -o $@ $^
 
