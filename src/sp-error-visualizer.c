@@ -43,43 +43,43 @@
  Useful syslog_patterns compiled by Eero: 
  (put this block into file and use it via -f argument)
  Note that: 
-  - whitespaces are meaningful, so keep them also at end of lines!
-  - #comment lines and empty lines are OK (skipped)
+ - whitespaces are meaningful, so keep them also at end of lines!
+ - #comment lines and empty lines are OK (skipped)
 
-  *************** START OF EXAMPLE syslog_patterns file **************
-# Kernel (reported) issues
+ *************** START OF EXAMPLE syslog_patterns file **************
+ # Kernel (reported) issues
  SysRq 
  Oops: 
-Out of Memory: Kill
-lowmem: denying memory
+ Out of Memory: Kill
+ lowmem: denying memory
 
-# DSP issues
-mbox: Illegal seq bit
-omapdsp: poll error
-mbx: ERR
+ # DSP issues
+ mbox: Illegal seq bit
+ omapdsp: poll error
+ mbx: ERR
 
-# Connectivity issues
-cx3110x ERROR
-TX dropped
-We haven't got a READY interrupt
-We haven't got a WR_READY interrupt
+ # Connectivity issues
+ cx3110x ERROR
+ TX dropped
+ We haven't got a READY interrupt
+ We haven't got a WR_READY interrupt
 
-# DSME reported issues
-spawning too fast -> reset
-exited with RESET
-exited and restarted
-exited with signal: 
+ # DSME reported issues
+ spawning too fast -> reset
+ exited with RESET
+ exited and restarted
+ exited with signal:
 
-# Maemo-launcher reported issues
-exited with return value: 
-exited due to signal
+ # Maemo-launcher reported issues
+ exited with return value:
+ exited due to signal
 
-# Glib reported issues
-GLIB WARNING
-GLIB CRITICAL
-GLIB ERROR
-  *************** END OF EXAMPLE syslog_patterns file **************
-*/
+ # Glib reported issues
+ GLIB WARNING
+ GLIB CRITICAL
+ GLIB ERROR
+ *************** END OF EXAMPLE syslog_patterns file **************
+ */
 
 /* Includes */
 #include <errno.h>
@@ -107,6 +107,10 @@ GLIB ERROR
 #define EVENT_SIZE (sizeof (struct inotify_event))
 #define INOTIFY_BUF_SIZE 1*(EVENT_SIZE + 16)
 
+/* Comment out the following define to use standard
+ * org.freedesktop.Notifications interface. */
+#define MAEMO6
+
 char buf[MAXMSG + 1];
 char prev[MAXMSG + 1];
 char *pattern[MAXPATTERNS];
@@ -114,338 +118,349 @@ int patnum = 0;
 
 void read_patterns(char *fname)
 {
-    int len;
-    FILE *f;
-    f = fopen(fname, "r");
-    if (f == NULL) {
-	perror("Can not open patterns file:");
-	exit(1);
-    }
-    patnum = 0;
-    while (fgets(buf, MAXMSG, f)) {
-	if (patnum >= MAXPATTERNS) {
-	    return;
+	int len;
+	FILE *f;
+	f = fopen(fname, "r");
+	if (f == NULL) {
+		perror("Can not open patterns file:");
+		exit(1);
 	}
-	if (buf[0] == '#') {
-	    continue;
+	patnum = 0;
+	while (fgets(buf, MAXMSG, f)) {
+		if (patnum >= MAXPATTERNS) {
+			return;
+		}
+		if (buf[0] == '#') {
+			continue;
+		}
+		len = strlen(buf);
+		if (len <= 1) {
+			/* just newline */
+			continue;
+		}
+		if (len > 0 && buf[len - 1] == '\n') {
+			buf[len - 1] = 0;
+		}
+		pattern[patnum] = (char *) malloc(len + 1);
+		if (!pattern[patnum]) {
+			g_print("read_patterns: Can not allocate memory\n");
+			exit(1);
+		}
+		strcpy(pattern[patnum], buf);
+		g_print("pattern[%3d]: [%s]\n", patnum, pattern[patnum]);
+		patnum++;
 	}
-	len = strlen(buf);
-	if (len <= 1) {
-	    /* just newline */
-	    continue;
-	}
-	if (len > 0 && buf[len - 1] == '\n') {
-	    buf[len - 1] = 0;
-	}
-	pattern[patnum] = (char *) malloc(len + 1);
-	if (!pattern[patnum]) {
-	    g_print("read_patterns: Can not allocate memory\n");
-	    exit(1);
-	}
-	strcpy(pattern[patnum], buf);
-	g_print("pattern[%3d]: [%s]\n", patnum, pattern[patnum]);
-	patnum++;
-    }
-    fclose(f);
-    g_print("read_patterns: processed %d patterns from file %s\n", patnum,
-	    fname);
+	fclose(f);
+	g_print("read_patterns: processed %d patterns from file %s\n", patnum, fname);
 }
 
-int add_logfile_creation_monitor(FILE * logfile, char *logfilepath,
-				 int inotify_fd, int logwatch)
+int add_logfile_creation_monitor(FILE * logfile, char *logfilepath, int inotify_fd, int logwatch)
 {
-    char *dir_name = g_path_get_dirname(logfilepath);
-    inotify_rm_watch(inotify_fd, logwatch);
-    fclose(logfile);
+	char *dir_name = g_path_get_dirname(logfilepath);
+	inotify_rm_watch(inotify_fd, logwatch);
+	fclose(logfile);
 
-    /* Create a watch for the creation of logfile */
-    logwatch = inotify_add_watch(inotify_fd, dir_name, IN_CREATE);
-    g_free(dir_name);
+	/* Create a watch for the creation of logfile */
+	logwatch = inotify_add_watch(inotify_fd, dir_name, IN_CREATE);
+	g_free(dir_name);
 
-    if (logwatch < 0) {
-	perror("inotify_add_watch failed: ");
-    }
-    return logwatch;
+	if (logwatch < 0) {
+		perror("inotify_add_watch failed: ");
+	}
+	return logwatch;
 }
 
 int main(int argc, char *argv[])
 {
-    int numspaces, len;
-    char *patternfile = NULL, *logfilepath = NULL;
-    char *p, *end;
-    char inotify_buf[INOTIFY_BUF_SIZE];
-    int pn, pattern_found;
-    int slog_socket = -1, readfromfile = 0, inotify_fd = -1, logwatch = -1;
-    int optchar;
+	int numspaces, len;
+	char *patternfile = NULL, *logfilepath = NULL;
+	char *p, *end;
+	char inotify_buf[INOTIFY_BUF_SIZE];
+	int pn, pattern_found;
+	int slog_socket = -1, readfromfile = 0, inotify_fd = -1, logwatch = -1;
+	int optchar;
 
-    struct sockaddr slog_socket_addr;
-    fd_set fds;
-    FILE *logfile = NULL;
+	struct sockaddr slog_socket_addr;
+	fd_set fds;
+	FILE *logfile = NULL;
 
-    while ((optchar = getopt(argc, argv, "sm:f:")) != -1) {
-	switch (optchar) {
+	while ((optchar = getopt(argc, argv, "sm:f:")) != -1) {
+		switch (optchar) {
 
-	case 's':
+		case 's':
 
-	    /* The check below might fail for other reasons than the
-	       non-existence of the socket. However, in that case reading
-	       from the logfile probably fails too... */
+			/* The check below might fail for other reasons than the
+			 non-existence of the socket. However, in that case reading
+			 from the logfile probably fails too... */
 
-	    if ((access(_PATH_LOG, F_OK) == 0)) {
-		g_print
-		    ("Won't read from socket as /dev/log already exists.\n");
-		g_print("See documentation for more details.\n");
-		return 1;
-	    }
+			if ((access(_PATH_LOG, F_OK) == 0)) {
+				g_print("Won't read from socket as /dev/log already exists.\n");
+				g_print("See documentation for more details.\n");
+				return 1;
+			}
 
-	    /* Ensure that previous syslog sockets are not dangling around */
+			/* Ensure that previous syslog sockets are not dangling around */
 
-	    unlink(_PATH_LOG);
+			unlink(_PATH_LOG);
 
-	    slog_socket_addr.sa_family = AF_UNIX;
-	    strncpy(slog_socket_addr.sa_data, _PATH_LOG,
-		    sizeof(slog_socket_addr.sa_data));
-	    slog_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
+			slog_socket_addr.sa_family = AF_UNIX;
+			strncpy(slog_socket_addr.sa_data, _PATH_LOG, sizeof(slog_socket_addr.sa_data));
+			slog_socket = socket(AF_UNIX, SOCK_DGRAM, 0);
 
-	    if (bind(slog_socket, &slog_socket_addr,
-		     sizeof(slog_socket_addr.sa_family) +
-		     strlen(slog_socket_addr.sa_data)) == -1) {
-		g_warning("Syslog socket invocation failed!\n");
-		perror("Reason was ");
-		return 1;
-	    }
+			if (bind(slog_socket, &slog_socket_addr, sizeof(slog_socket_addr.sa_family) + strlen(
+					slog_socket_addr.sa_data)) == -1) {
+				g_warning("Syslog socket invocation failed!\n");
+				perror("Reason was ");
+				return 1;
+			}
 
-	    /* Setup permissions to allow everybody r/w access to log */
-	    if (chmod(_PATH_LOG, 0666) < 0) {
-		g_warning("Could not setup syslog socket permissions\n");
-		return 1;
-	    }
+			/* Setup permissions to allow everybody r/w access to log */
+			if (chmod(_PATH_LOG, 0666) < 0) {
+				g_warning("Could not setup syslog socket permissions\n");
+				return 1;
+			}
 
-	    break;
+			break;
 
-	case 'f':
-	    patternfile = (char *) optarg;
-	    read_patterns(patternfile);
-	    readfromfile = 1;
-	    break;
+		case 'f':
+			patternfile = (char *) optarg;
+			read_patterns(patternfile);
+			readfromfile = 1;
+			break;
 
-	case 'm':
-	    logfilepath = (char *) optarg;
-	    /* if we're not using syslog socket (i.e. we're getting data from
-	       a logfile, we'll have to initialize an inotify queue for
-	       monitoring log rotation as a workaround for the current
-	       limitations in the busybox tail. */
+		case 'm':
+			logfilepath = (char *) optarg;
+			/* if we're not using syslog socket (i.e. we're getting data from
+			 a logfile, we'll have to initialize an inotify queue for
+			 monitoring log rotation as a workaround for the current
+			 limitations in the busybox tail. */
 
-	    if (slog_socket < 0) {
+			if (slog_socket < 0) {
 
-		/* Check that the logfile exists */
+				/* Check that the logfile exists */
 
-		if ((logfile = fopen(logfilepath, "r")) == NULL) {
-		    perror("Could not open logfile: ");
-		    exit(EXIT_FAILURE);
+				if ((logfile = fopen(logfilepath, "r")) == NULL) {
+					perror("Could not open logfile: ");
+					exit(EXIT_FAILURE);
+				}
+
+				/* We want only to read the very latest entries */
+				fseek(logfile, 0, SEEK_END);
+
+				inotify_fd = inotify_init();
+				if (inotify_fd < 0) {
+					perror("inotify_init failed: ");
+					g_print("Aborting...");
+					return 1;
+				}
+
+				g_print("Starting inotify monitoring for file %s\n", logfilepath);
+				logwatch = inotify_add_watch(inotify_fd, logfilepath, IN_MODIFY | IN_MOVE_SELF | IN_DELETE_SELF);
+				if (logwatch < 0) {
+					perror("inotify_add_watch failed: ");
+				}
+			} else {
+				g_print("-m does not make sense in syslogd replacement mode.\n");
+				close(slog_socket);
+				return 1;
+			}
+			break;
+
+		default:
+			g_print("Please look at the documentation for usage information\n");
+			return 1;
 		}
-
-		/* We want only to read the very latest entries */
-		fseek(logfile, 0, SEEK_END);
-
-		inotify_fd = inotify_init();
-		if (inotify_fd < 0) {
-		    perror("inotify_init failed: ");
-		    g_print("Aborting...");
-		    return 1;
-		}
-
-		g_print("Starting inotify monitoring for file %s\n",
-			logfilepath);
-		logwatch =
-		    inotify_add_watch(inotify_fd, logfilepath,
-				      IN_MODIFY | IN_MOVE_SELF |
-				      IN_DELETE_SELF);
-		if (logwatch < 0) {
-		    perror("inotify_add_watch failed: ");
-		}
-	    } else {
-		g_print
-		    ("-m does not make sense in syslogd replacement mode.\n");
-		close(slog_socket);
-		return 1;
-	    }
-	    break;
-
-	default:
-	    g_print
-		("Please look at the documentation for usage information\n");
-	    return 1;
 	}
-    }
 
-    if (!readfromfile && optind < argc) {
-	for (; patnum < (argc - 1) && patnum < MAXPATTERNS; patnum++) {
-	    pattern[patnum] = argv[optind + patnum];
-	    g_print("pattern[%3d]: [%s]\n", patnum, pattern[patnum]);
+	if (!readfromfile && optind < argc) {
+		for (; patnum < (argc - optind) && patnum < MAXPATTERNS; patnum++) {
+			pattern[patnum] = argv[optind + patnum];
+			g_print("pattern[%3d]: [%s]\n", patnum, pattern[patnum]);
+		}
 	}
-    }
 
-    /* setup dbus-glib required stuff */
-    g_type_init();
-    GError *error = NULL;
-    DBusGConnection *connection = dbus_g_bus_get (DBUS_BUS_SESSION, &error);
-    if (connection == NULL) {
-	g_printerr ("Failed to open connection to bus: %s\n", error->message);
-	g_error_free (error);
-	exit (1);
-    }
-    DBusGProxy *proxy = dbus_g_proxy_new_for_name (connection,
-	"org.freedesktop.Notifications",
-	"/org/freedesktop/Notifications",
-	"org.freedesktop.Notifications"
+	/* setup dbus-glib required stuff */
+	g_type_init();
+	GError *error = NULL;
+	DBusGConnection *connection = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
+	if (connection == NULL) {
+		g_printerr("Failed to open connection to bus: %s\n", error->message);
+		g_error_free(error);
+		exit(1);
+	}
+#ifdef MAEMO6
+	DBusGProxy *proxy = dbus_g_proxy_new_for_name(connection, "com.meego.core.MNotificationManager",
+			"/notificationmanager", "com.meego.core.MNotificationManager");
+
+	/* retrieve user id to be used for notifications */
+	guint user_id;
+	dbus_g_proxy_call(proxy, "notificationUserId", &error, G_TYPE_INVALID, G_TYPE_UINT, &user_id, G_TYPE_INVALID);
+	if (error) {
+		g_printerr("Failed to retrieve notification user id: %s\n", error->message);
+		g_error_free(error);
+		exit(1);
+	}
+#else
+	DBusGProxy *proxy = dbus_g_proxy_new_for_name (connection,
+			"org.freedesktop.Notifications",
+			"/org/freedesktop/Notifications",
+			"org.freedesktop.Notifications"
 	);
-    GHashTable *hash = g_hash_table_new (g_str_hash, g_str_equal);
-    /**/
+	GHashTable *hash = g_hash_table_new (g_str_hash, g_str_equal);
+#endif
+	/**/
 
-    while (1) {
+	while (1) {
 
-	int fd = 0;
-	memset(&buf, '\0', sizeof(buf));
-	FD_ZERO(&fds);
+		int fd = 0;
+		memset(&buf, '\0', sizeof(buf));
+		FD_ZERO(&fds);
 
-	if (slog_socket < 0 && inotify_fd > -1) {
-	    FD_SET(inotify_fd, &fds);
-	    fd = inotify_fd;
-	} else if (slog_socket > 0) {
-	    FD_SET(slog_socket, &fds);
-	    fd = slog_socket;
-	}
-
-	if (fd == 0) {
-	    if (!fgets(buf, MAXMSG, stdin)) {
-		break;
-	    }
-	} else {
-	    if (select(fd + 1, &fds, NULL, NULL, NULL) < 0) {
-		g_print("Select failed. Exiting.\n");
-		close(fd);
-		break;
-	    }
-
-	    if (inotify_fd > 0 && FD_ISSET(inotify_fd, &fds)) {
-		int len = 0;
-		struct inotify_event *event;
-
-		memset(&inotify_buf, '\0', sizeof(inotify_buf));
-
-		/* Handle inotify events */
-
-		len = read(inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
-		if (len < 0) {
-		    perror("Reading inotify queue failed ");
-		    continue;
+		if (slog_socket < 0 && inotify_fd > -1) {
+			FD_SET(inotify_fd, &fds);
+			fd = inotify_fd;
+		} else if (slog_socket > 0) {
+			FD_SET(slog_socket, &fds);
+			fd = slog_socket;
 		}
 
-		event = (struct inotify_event *) &inotify_buf[0];
-		if (event->len > 0) {
-		    g_print("name: %s\n", event->name);
+		if (fd == 0) {
+			if (!fgets(buf, MAXMSG, stdin)) {
+				break;
+			}
+		} else {
+			if (select(fd + 1, &fds, NULL, NULL, NULL) < 0) {
+				g_print("Select failed. Exiting.\n");
+				close(fd);
+				break;
+			}
+
+			if (inotify_fd > 0 && FD_ISSET(inotify_fd, &fds)) {
+				int len = 0;
+				struct inotify_event *event;
+
+				memset(&inotify_buf, '\0', sizeof(inotify_buf));
+
+				/* Handle inotify events */
+
+				len = read(inotify_fd, inotify_buf, INOTIFY_BUF_SIZE);
+				if (len < 0) {
+					perror("Reading inotify queue failed ");
+					continue;
+				}
+
+				event = (struct inotify_event *) &inotify_buf[0];
+				if (event->len > 0) {
+					g_print("name: %s\n", event->name);
+				}
+				if (event->mask == IN_DELETE_SELF || event->mask == IN_MOVE_SELF) {
+					logwatch = add_logfile_creation_monitor(logfile, logfilepath, inotify_fd, logwatch);
+					if (logwatch < 0) {
+						g_print("Could not handle log rotation.\n");
+						break;
+					}
+				}
+				if (event->mask == IN_CREATE && event->name && strcmp(event->name, logfilepath)) {
+
+					logfile = fopen(logfilepath, "r");
+					if (logfile == NULL) {
+						g_print("Could not (re)open the logfile!\n");
+						break;
+					}
+					inotify_rm_watch(inotify_fd, logwatch);
+					g_print("Starting inotify monitoring for file %s\n", logfilepath);
+					logwatch = inotify_add_watch(inotify_fd, logfilepath, IN_MODIFY | IN_MOVE_SELF | IN_DELETE_SELF);
+					if (logwatch < 0) {
+						perror("inotify_add_watch failed: ");
+						break;
+					}
+
+				} else if (event->mask == IN_MODIFY) {
+					if (!fgets(buf, MAXMSG, logfile)) {
+						break;
+					}
+				}
+			} else if (slog_socket > 0 && FD_ISSET(slog_socket, &fds)) {
+				int ret;
+				ret = recv(slog_socket, buf, MAXMSG - 1, 0);
+				if (ret < 0) {
+					g_print("Reading from the syslog socket failed. Exiting.\n");
+					break;
+				}
+			}
 		}
-		if (event->mask == IN_DELETE_SELF
-		    || event->mask == IN_MOVE_SELF) {
-		    logwatch =
-			add_logfile_creation_monitor(logfile, logfilepath,
-						     inotify_fd, logwatch);
-		    if (logwatch < 0) {
-			g_print("Could not handle log rotation.\n");
+		p = buf;
+		end = buf + MAXMSG;
+
+		/*
+		 * poor man parser to ignore prefix of typical syslog line:
+		 *
+		 May 16 12:53:44 Nokia-N800-19 iap_conndlg 1.3.51[1915]: NameownerChanged(:1.1278, , :1.1278)
+		 *
+		 * we use part starting after 4th space
+		 */
+		for (numspaces = 0; p < end && numspaces < 4; p++) {
+			if (*p == ' ') {
+				numspaces++;
+			}
+		}
+		fprintf(stderr, "[+] %s\n", p);
+		if (!strncmp(p, prev, MAXMSG)) {
+			/*
+			 * repeating msg
+			 */
+			continue;
+		}
+		for (pattern_found = pn = 0; pn < patnum; pn++) {
+			if (strstr(p, pattern[pn])) {
+				pattern_found = 1;
+				break;
+			}
+		}
+		if (patnum && !pattern_found) {
+			continue;
+		}
+
+		strncpy(prev, p, MAXMSG);
+		len = strlen(p);
+		if (p[len - 1] == '\n') {
+			p[len - 1] = 0;
+		}
+#ifdef MAEMO6
+		guint id;
+		dbus_g_proxy_call(proxy, "addNotification", &error, G_TYPE_UINT, user_id, G_TYPE_UINT, 0, G_TYPE_STRING,
+				"x-nokia.sp-error-visualizer", G_TYPE_STRING, "Error", G_TYPE_STRING, p, G_TYPE_STRING, "",
+				G_TYPE_STRING, "", G_TYPE_UINT, 1, G_TYPE_INVALID, G_TYPE_UINT, &id, G_TYPE_INVALID);
+		if (error) {
+			g_printerr("Failed to send notification message: %s\n", error->message);
+			g_error_free(error);
 			break;
-		    }
 		}
-		if (event->mask == IN_CREATE && event->name &&
-		    strcmp(event->name, logfilepath)) {
 
-		    logfile = fopen(logfilepath, "r");
-		    if (logfile == NULL) {
-			g_print("Could not (re)open the logfile!\n");
-			break;
-		    }
-		    inotify_rm_watch(inotify_fd, logwatch);
-		    g_print("Starting inotify monitoring for file %s\n",
-			    logfilepath);
-		    logwatch = inotify_add_watch(inotify_fd, logfilepath,
-						 IN_MODIFY | IN_MOVE_SELF
-						 | IN_DELETE_SELF);
-		    if (logwatch < 0) {
-			perror("inotify_add_watch failed: ");
-			break;
-		    }
-
-		} else if (event->mask == IN_MODIFY) {
-		    if (!fgets(buf, MAXMSG, logfile)) {
-			break;
-		    }
-		}
-	    } else if (slog_socket > 0 && FD_ISSET(slog_socket, &fds)) {
-		int ret;
-		ret = recv(slog_socket, buf, MAXMSG - 1, 0);
-		if (ret < 0) {
-		    g_print
-			("Reading from the syslog socket failed. Exiting.\n");
-		    break;
-		}
-	    }
-	}
-	p = buf;
-	end = buf + MAXMSG;
-
-	/*
-	 * poor man parser to ignore prefix of typical syslog line:
-	 *
-	 May 16 12:53:44 Nokia-N800-19 iap_conndlg 1.3.51[1915]: NameownerChanged(:1.1278, , :1.1278)
-	 *
-	 * we use part starting after 4th space
-	 */
-	for (numspaces = 0; p < end && numspaces < 4; p++) {
-	    if (*p == ' ') {
-		numspaces++;
-	    }
-	}
-	if (!strncmp(p, prev, MAXMSG)) {
-	    /*
-	     * repeating msg
-	     */
-	    continue;
-	}
-	for (pattern_found = pn = 0; pn < patnum; pn++) {
-	    if (strstr(p, pattern[pn])) {
-		pattern_found = 1;
-		break;
-	    }
-	}
-	if (patnum && !pattern_found) {
-	    continue;
-	}
-
-	strncpy(prev, p, MAXMSG);
-	len = strlen(p);
-	if (p[len - 1] == '\n') {
-	    p[len - 1] = 0;
-	}
-    dbus_g_proxy_call_no_reply(proxy, "Notify",
-		G_TYPE_STRING, "",
-		G_TYPE_UINT, 0,
-		G_TYPE_STRING, "",
-		G_TYPE_STRING, "Error",
-		G_TYPE_STRING, p,
-		G_TYPE_STRV, NULL,
-		dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE), hash,
-		G_TYPE_INT, -1,
-		G_TYPE_INVALID
+#else
+		dbus_g_proxy_call_no_reply(proxy, "Notify",
+				G_TYPE_STRING, "",
+				G_TYPE_UINT, 0,
+				G_TYPE_STRING, "",
+				G_TYPE_STRING, "Error",
+				G_TYPE_STRING, p,
+				G_TYPE_STRV, NULL,
+				dbus_g_type_get_map("GHashTable", G_TYPE_STRING, G_TYPE_VALUE), hash,
+				G_TYPE_INT, -1,
+				G_TYPE_INVALID
 		);
-    }
-    g_hash_table_destroy (hash);
-    g_object_unref(proxy);
+#endif
+	}
+#ifndef MAEMO6
+	g_hash_table_destroy (hash);
+#endif
+	g_object_unref(proxy);
 
-    if (inotify_fd > 0) {
-	close(inotify_fd);
-    }
-    if (slog_socket > 0) {
-        close(slog_socket);
-    }
-    return 0;
+	if (inotify_fd > 0) {
+		close(inotify_fd);
+	}
+	if (slog_socket > 0) {
+		close(slog_socket);
+	}
+	return 0;
 }

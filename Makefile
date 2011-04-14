@@ -15,5 +15,6 @@ install:
 	install -d $(DESTDIR)/usr/share/man/man1/
 	cp man/* $(DESTDIR)/usr/share/man/man1/
 	install -m 664 data/* $(DESTDIR)/usr/share/sp-error-visualizer/data/
+	install -m 664 events/* $(DESTDIR)/usr/share/meegotouch/notifications/eventtypes/
 		
 
