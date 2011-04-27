@@ -116,7 +116,7 @@ char prev[MAXMSG + 1];
 char *pattern[MAXPATTERNS];
 int patnum = 0;
 
-void read_patterns(char *fname)
+static void read_patterns(char *fname)
 {
 	int len;
 	FILE *f;
@@ -154,7 +154,7 @@ void read_patterns(char *fname)
 	g_print("read_patterns: processed %d patterns from file %s\n", patnum, fname);
 }
 
-int add_logfile_creation_monitor(FILE * logfile, char *logfilepath, int inotify_fd, int logwatch)
+static int add_logfile_creation_monitor(FILE * logfile, char *logfilepath, int inotify_fd, int logwatch)
 {
 	char *dir_name = g_path_get_dirname(logfilepath);
 	inotify_rm_watch(inotify_fd, logwatch);
