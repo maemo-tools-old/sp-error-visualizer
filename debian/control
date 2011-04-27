@@ -3,7 +3,7 @@ Section: devel
 Priority: optional
 Maintainer: Eero Tamminen <eero.tamminen@nokia.com>
 Build-Depends: debhelper (>= 5), libdbus-glib-1-dev, pkg-config
-Standards-Version: 3.6.1
+Standards-Version: 3.9.2
 
 Package: sp-error-visualizer
 Architecture: any
