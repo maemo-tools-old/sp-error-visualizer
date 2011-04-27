@@ -107,10 +107,6 @@
 #define EVENT_SIZE (sizeof (struct inotify_event))
 #define INOTIFY_BUF_SIZE 1*(EVENT_SIZE + 16)
 
-/* Comment out the following define to use standard
- * org.freedesktop.Notifications interface. */
-#define MAEMO6
-
 char buf[MAXMSG + 1];
 char prev[MAXMSG + 1];
 char *pattern[MAXPATTERNS];
