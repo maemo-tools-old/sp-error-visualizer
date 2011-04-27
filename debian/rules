@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 #export DH_VERBOSE=1
 
-CFLAGS = -Wall -g
+CFLAGS = -Wall -g -DMAEMO6
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
