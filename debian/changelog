@@ -1,3 +1,10 @@
+sp-error-visualizer (0.0.9) unstable; urgency=low
+
+  * Fixes: NB#168582 - sp-error-visualizer uses /etc/init.d/ & libosso which
+    are deprecated in Harmattan
+
+ -- Tommi Rantala <ext-tommi.1.rantala@nokia.com>  Wed, 27 Apr 2011 11:05:34 +0300
+
 sp-error-visualizer (0.0.8-1) unstable; urgency=low
 
   * Common syslog error matching data has been updated. Fixes: NB#86806
