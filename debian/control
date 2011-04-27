@@ -2,7 +2,7 @@ Source: sp-error-visualizer
 Section: devel
 Priority: optional
 Maintainer: Eero Tamminen <eero.tamminen@nokia.com>
-Build-Depends: debhelper (>= 5), libdbus-glib-1-dev
+Build-Depends: debhelper (>= 5), libdbus-glib-1-dev, pkg-config
 Standards-Version: 3.6.1
 
 Package: sp-error-visualizer
