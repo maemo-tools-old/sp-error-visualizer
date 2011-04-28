@@ -400,7 +400,6 @@ int main(int argc, char *argv[])
 				numspaces++;
 			}
 		}
-		fprintf(stderr, "[+] %s\n", p);
 		if (!strncmp(p, prev, MAXMSG)) {
 			/*
 			 * repeating msg
