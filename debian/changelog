@@ -1,3 +1,9 @@
+sp-error-visualizer (0.1.0) unstable; urgency=low
+
+  * Remove debugging printf - Fixes: NB#168582
+
+ -- Tommi Rantala <ext-tommi.1.rantala@nokia.com>  Tue, 10 May 2011 13:54:11 +0300
+
 sp-error-visualizer (0.0.9) unstable; urgency=low
 
   * Fixes: NB#168582 - sp-error-visualizer uses /etc/init.d/ & libosso which
