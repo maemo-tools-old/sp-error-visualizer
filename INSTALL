@@ -13,8 +13,8 @@ The following packages must be installed before sp-error-visualizer:
 1.2 Compilation & Installation
 ------------------------------
 
-To compile sp-rtrace extract the source archive and do the following
-steps in the sp-rtrace directory:
+To compile sp-error-visualizer extract the source archive and do the following
+steps in the sp-error-visualizer directory:
 
   1) Build the sp-error-visualizer binaries with "make"
   2) Install the bult binaries with "make install"
