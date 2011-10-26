@@ -4,7 +4,7 @@ Release: 1%{?dist}
 Summary: Displays errors (or anything from stdin) as banners
 Group: Development/Tools
 License: GPLv2+
-URL: http://www.gitorious.org/+maemo-tools-developers/maemo-tools/sp-error-visualize
+URL: http://www.gitorious.org/+maemo-tools-developers/maemo-tools/sp-error-visualizer
 Source: %{name}_%{version}.tar.gz
 BuildRoot: {_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: dbus-1-glib-devel, pkg-config
