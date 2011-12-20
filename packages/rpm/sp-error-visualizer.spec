@@ -35,7 +35,8 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/sp-error-visualizer
 %{_mandir}/man1/sp-error-visualizer.1.gz
-%{_datadir}/%{name}/data/*
+%{_datadir}/%{name}/
+
 %doc COPYING 
 
 
